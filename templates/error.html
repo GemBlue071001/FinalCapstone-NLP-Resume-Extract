@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Error</title>
+    <style>
+      body {
+        background-color: #1c1c1e;
+        font-family: "Poppins", sans-serif;
+        color: #f5f5f7;
+      }
+      h1 {
+        color: #e5e5e7;
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      .container {
+        background-color: #2c2c2e;
+        padding: 30px;
+        border-radius: 15px;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
+        max-width: 600px;
+        margin: 50px auto;
+      }
+      .section-title {
+        color: #ff9f0a;
+        font-size: 1.5rem;
+        font-weight: bold;
+        margin-top: 20px;
+        border-bottom: 2px solid #ff9f0a;
+        padding-bottom: 10px;
+      }
+      .btn-reset {
+        background-color: #ff453a;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 5px;
+        transition: background-color 0.3s ease;
+        text-decoration: none;
+      }
+      .btn-reset:hover {
+        background-color: #e03a2f;
+      }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="section-title">Error</h1>
+        <p>{{ message }}</p>
+        <a href="/" class="btn-reset">Go Back to Home</a>
+    </div>
+</body>
+</html>

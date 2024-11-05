@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Data Extractor</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <style>
+        body {
+            background-color: #1c1c1e;
+            font-family: "Poppins", sans-serif;
+            color: #f5f5f7;
+            margin: 0;
+        }
+
+        h1 {
+            color: #e5e5e7;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .container {
+            margin-top: 70px;
+        }
+
+        .file-upload-section {
+            background-color: #2c2c2e;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
+            text-align: center;
+        }
+
+        .file-upload-section input[type="file"] {
+            margin: 20px 0;
+        }
+
+        .file-upload-section input[type="submit"] {
+            background-color: #e68a00;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+
+        .file-upload-section input[type="submit"]:hover {
+            background-color: #e68a00;
+        }
+
+        .file-actions a {
+            margin: 0 10px;
+            text-decoration: none;
+            color: #e68a00;
+        }
+
+        .file-actions a:hover {
+            color: #e68a00;
+        }
+
+        .flash-message {
+            margin-bottom: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            color: #333;
+        }
+
+        .alert {
+            text-align: center;
+            position: sticky;
+            top: 0;
+            right: 15%;
+        }
+
+        /* Loader styles */
+        .loader {
+            border: 8px solid #f3f3f3;
+            border-top: 8px solid #e68a00;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 2s linear infinite;
+            margin: 20px auto;
+            display: none;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Top bar styles */
+        .top-bar {
+            background-color: #333;
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .top-bar h2 {
+            color: white;
+        }
+
+        /* Navigation tab styles */
+        .tab {
+            display: flex;
+            gap: 10px;
+        }
+
+        .tab button {
+            background-color: inherit;
+            border: none;
+            outline: none;
+            cursor: pointer;
+            padding: 10px 16px;
+            transition: 0.3s;
+            font-size: 17px;
+            color: white;
+        }
+
+        .tab button:hover {
+            background-color: #575757;
+            cursor: pointer;
+        }
+
+        .tab button.active {
+            background-color: #ee4410;
+        }
+
+        /* Tab content styles */
+        .tabcontent {
+            display: none;
+            padding: 20px;
+            margin-top: 70px;
+        }
+
+        .disabled {
+            cursor: not-allowed !important;
+            opacity: 0.6;/* Set cursor to not-allowed */
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .tab {
+                flex-direction: column;
+            }
+        }
+    </style>
+  </head>
+  <body>
+   <div class="top-bar">
+        <h2>AI Data Extractor</h2>
+        <!-- Navigation Tabs -->
+         <div class="tab">           
+            <button class="tablinks active" onclick="openLink('https://webashalarforml-resumeextractor3.hf.space/', this, '#ff4d00')" id="defaultOpen">Resume Data Extractor</button>
+      </div>
+    </div>
+   <div class="container">
+      <h1>Resume Data Extractor</h1>
+      <div class="file-upload-section">     
+
+        <form
+          id="fileUploadForm"
+          action="{{ url_for('upload_and_process') }}"
+          method="POST"
+          enctype="multipart/form-data"
+        >
+          <input type="file" name="file" class="form-control" required />
+          <input type="submit" value="Upload you Resume" class="btn btn-outline-primary" />
+        </form>
+
+        {% if session.get('uploaded_file') %}
+        <p class="mt-4">
+          Uploaded:
+          <span class="text-danger">{{ session.get('uploaded_file') }}</span>
+        </p>
+        <div class="file-actions">
+          <form action="{{ url_for('remove_file') }}" method="post">
+            <button type="submit" class="btn btn-outline-danger">
+              <i class="bi bi-trash"></i> Remove Uploaded File
+            </button>
+          </form>
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="container">
+         <!-- Loader -->
+         <div class="loader" id="loader"></div>
+      </div>
+
+      {% with messages = get_flashed_messages() %} {% if messages %}
+      <div class="alert alert-success mt-4" id="flash-message">
+        {{ messages[0] }}
+      </div>
+      {% endif %} {% endwith %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+      <script>
+        // Loader functionality
+        document.getElementById('fileUploadForm').onsubmit = function() {
+          document.getElementById('loader').style.display = 'block';
+          
+          // Disable the tab buttons and apply disabled class
+          const buttons = document.querySelectorAll('.tab button');
+          buttons.forEach(button => {
+            button.setAttribute('disabled', 'true');
+            button.classList.add('disabled'); // Add disabled class
+          });
+          
+          // Show processing message
+          const processingMessage = document.createElement('p');
+          processingMessage.id = 'processing-message';
+          processingMessage.textContent = 'Processing, please wait...';
+          processingMessage.style.color = '#e68a00'; // Style as needed
+          document.querySelector('.file-upload-section').appendChild(processingMessage);
+        };
+      
+        // Flash message auto-hide
+        setTimeout(function () {
+          let flashMessage = document.getElementById("flash-message");
+          if (flashMessage) {
+            flashMessage.style.transition = "opacity 1s ease";
+            flashMessage.style.opacity = 0;
+            setTimeout(() => flashMessage.remove(), 1000);
+          }
+          
+          // After processing is complete (You can adjust this based on your logic)
+          const processingMessage = document.getElementById('processing-message');
+          if (processingMessage) {
+            processingMessage.remove(); // Remove the processing message
+          }
+          
+          // Re-enable tab buttons and remove disabled class
+          const buttons = document.querySelectorAll('.tab button');
+          buttons.forEach(button => {
+            button.removeAttribute('disabled');
+            button.classList.remove('disabled'); // Remove disabled class
+          });
+        }, 3000); // Adjust timing based on your upload duration
+      
+        // Function to open links in the same tab
+        function openLink(url, element) {
+          window.location.href = url; // Redirects to the specified URL in the same tab
+          
+          // Remove "active" class from all buttons
+          const buttons = document.querySelectorAll('.tab button');
+          buttons.forEach(button => button.classList.remove('active'));
+          
+          // Add "active" class to the clicked button
+          element.classList.add('active');
+        }
+        // Removing cookie once process completed
+         function setCookie(name, value, days) {
+            let expires = "";
+            if (days) {
+                const date = new Date();
+                date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+                expires = "; expires=" + date.toUTCString();
+            }
+            document.cookie = name + "=" + (value || "") + expires + "; path=/";
+        }
+        
+        function deleteCookie(name) {
+            document.cookie = name + '=; Max-Age=0; path=/;'; // Delete the cookie
+        }
+        
+        // Set the cookie (you can comment this out after testing)
+        setCookie('myCookie', 'myValue', 1); // Sets a cookie for demonstration
+        
+        // Automatically delete the cookie when the page is loaded or refreshed
+        window.onload = function() {
+            deleteCookie('myCookie'); // Replace 'myCookie' with your cookie name
+        }
+
+      </script>   
+  </body>
+</html>
