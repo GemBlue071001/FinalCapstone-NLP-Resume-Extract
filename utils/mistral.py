@@ -12,8 +12,6 @@ from utils.spacy import Parser_from_model
 # Load environment variables from .env file
 load_dotenv()
 
-# # Authenticate with Hugging Face
-# HFT = os.getenv('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')
 
 # if not HFT:
 #     raise ValueError("Hugging Face token is not set in environment variables.")
