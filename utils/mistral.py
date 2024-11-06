@@ -21,7 +21,7 @@ HFT = os.getenv('HUGGINGFACE_TOKEN')
 
 if not HFT:
     # Check if token is passed directly
-    HFT = "YOUR_HF_TOKEN_HERE"
+    HFT = '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'
     if not HFT:
         raise ValueError("Hugging Face token is not set in environment variables or directly.")
 

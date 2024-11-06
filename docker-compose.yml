@@ -1,0 +1,28 @@
+# version: '3.8'
+
+# services:
+#   resume_extractor:
+#     build:
+#       context: .
+#       dockerfile: Dockerfile
+#     container_name: resume_extractor_service
+#     # environment:
+#     #   - ENV_VAR_NAME=value  # Add any necessary environment variables here
+#     volumes:
+#       - .:/app
+#     ports:
+#       - "7861:7860"
+#     command: ["python", "app.py"]
+version: '3.8'
+
+services:
+  resume_extractor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: resume_extractor_service
+    volumes:
+      - .:/app
+    ports:
+      - "7861:7860"  # Maps container port 7860 to host port 7861
+    command: ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "7860"]
