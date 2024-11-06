@@ -87,3 +87,6 @@ huggingface-hub
 striprtf
 easyocr
 gunicorn
+python-multipart
+uvicorn
+fastapi
