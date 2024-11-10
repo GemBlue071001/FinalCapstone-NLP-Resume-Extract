@@ -429,8 +429,6 @@ def Parser_from_model(file_path):
     result['personal']['link'] = normalize_to_list(hyperlinks)
     result['personal']['link'] += cont_data['links_RE'] 
 
-    e 
-
     result['professional']['technical_skills'] = normalize_to_list(entities.get('SKILL'))
     result['professional']['non_technical_skills'] = normalize_to_list(entities.get('SOFT_SKILL'))
     result['professional']['tools'] = None  # Logic for tools can be added if needed

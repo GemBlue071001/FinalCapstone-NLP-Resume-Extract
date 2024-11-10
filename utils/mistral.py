@@ -2,8 +2,7 @@
 import os
 import json
 import logging
-from huggingface_hub import InferenceClient
-from huggingface_hub.utils._errors import BadRequestError
+import requests
 from dotenv import load_dotenv
 from utils.fileTotext import extract_text_based_on_format
 import re
@@ -12,47 +11,47 @@ from utils.spacy import Parser_from_model
 # Load environment variables from .env file
 load_dotenv()
 
+# LM Studio server configuration
+LM_STUDIO_URL = "http://localhost:7860/v1/chat/completions"  # Default LM Studio port
 
-# if not HFT:
-#     raise ValueError("Hugging Face token is not set in environment variables.")
-# client = InferenceClient(model="mistralai/Mistral-Nemo-Instruct-2407", token=HFT)
+class LMStudioClient:
+    def __init__(self, url=LM_STUDIO_URL):
+        self.url = url
+        
+    def chat_completion(self, messages, max_tokens=3000, stream=False, temperature=0.35):
+        try:
+            payload = {
+                "messages": messages,
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+                "stream": stream
+            }
+            
+            response = requests.post(self.url, json=payload)
+            response.raise_for_status()
+            
+            return ChatCompletionResponse(response.json())
+            
+        except requests.exceptions.RequestException as e:
+            logging.error(f"LM Studio API error: {str(e)}")
+            raise
 
-HFT = os.getenv('HUGGINGFACE_TOKEN')
+class ChatCompletionResponse:
+    def __init__(self, response_data):
+        self.choices = [Choice(response_data.get('choices', [{}])[0])]
 
-if not HFT:
-    # Check if token is passed directly
-    HFT = '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'
-    if not HFT:
-        raise ValueError("Hugging Face token is not set in environment variables or directly.")
+class Choice:
+    def __init__(self, choice_data):
+        self.message = Message(choice_data.get('message', {}))
 
-try:
-    # Initialize the client with error handling
-    client = InferenceClient(
-        model="mistralai/Mistral-Nemo-Instruct-2407",
-        token=HFT
-    )
-except Exception as e:
-    raise ValueError(f"Failed to initialize Hugging Face client: {str(e)}")
+class Message:
+    def __init__(self, message_data):
+        self.content = message_data.get('content', '')
+
+# Initialize LM Studio client
+client = LMStudioClient()
 
 # Function to clean model output
-'''
-def Data_Cleaner(text):
-    pattern = r".*?format:"
-    result = re.split(pattern, text, maxsplit=1)
-    if len(result) > 1:
-        # Handle edge cases where JSON might not be properly formatted after 'format:'
-        text_after_format = result[1].strip().strip('`').strip('json')
-    else:
-        text_after_format = text.strip().strip('`').strip('json')
-
-    # Try to ensure valid JSON is returned
-    try:
-        json.loads(text_after_format)  # Check if it's valid JSON
-        return text_after_format
-    except json.JSONDecodeError:
-        logging.error("Data cleaning led to invalid JSON")
-        return text  # Return the original text if cleaning goes wrong
-'''
 def Data_Cleaner(text):
     """
     Preprocess the JSON string to remove extra spaces, tabs, and newlines.
@@ -67,7 +66,7 @@ def Data_Cleaner(text):
         # If no match, check if text itself is a JSON object
         try:
             json_obj = json.loads(text.strip())  # Attempt to load the text as JSON
-             # Remove leading and trailing whitespace
+            # Remove leading and trailing whitespace
             text = text.strip()
             # Remove unnecessary newlines and tabs
             text = re.sub(r'\s*\n\s*', ' ', text)  # Replace newlines with a space
@@ -84,7 +83,8 @@ def Data_Cleaner(text):
         return json_str  # Return the parsed JSON as a dictionary
     except json.JSONDecodeError:
         logging.error("Extracted text is not valid JSON")
-        return text  # Return the original text if JSON decoding fa
+        return text  # Return the original text if JSON decoding fails
+
 
 # Function to call Mistral and process output
 def Model_ProfessionalDetails_Output(resume, client):
@@ -500,11 +500,7 @@ def process_resume_data(file_path):
             return result
         else:
             raise ValueError("Mistral returned no output")
-    
-    # Handle HuggingFace API or Mistral model errors
-    except BadRequestError as e:
-        logging.error(f"HuggingFace API error: {e}. Falling back to SpaCy.")
-        print(f"HuggingFace API error: {e}. Falling back to SpaCy.")
+
     except Exception as e:
         logging.error(f"An error occurred while processing with Mistral: {e}. Falling back to SpaCy.")
         print(f"An error occurred while processing with Mistral: {e}. Falling back to SpaCy.")
@@ -513,4 +509,3 @@ def process_resume_data(file_path):
     logging.warning("Mistral failed, switching to SpaCy.")
     print("---------SpaCy-------")
     return Parser_from_model(file_path)
-    
