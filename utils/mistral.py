@@ -12,7 +12,7 @@ from utils.spacy import Parser_from_model
 load_dotenv()
 
 # LM Studio server configuration
-LM_STUDIO_URL = "http://localhost:7860/v1/chat/completions"  # Default LM Studio port
+LM_STUDIO_URL = "http://192.168.1.100:7860/v1/chat/completions"  # Default LM Studio port
 
 class LMStudioClient:
     def __init__(self, url=LM_STUDIO_URL):

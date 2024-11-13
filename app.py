@@ -10,15 +10,19 @@ import logging
 import requests
 from pathlib import Path
 import uvicorn
-from utils.error import handle_file_not_found, handle_invalid_file_type, handle_file_processing_error
+# from utils.error import handle_file_not_found, handle_invalid_file_type, handle_file_processing_error
 from utils.spacy import Parser_from_model
 from utils.mistral import process_resume_data, LMStudioClient
 
+from pydantic import BaseModel
+from typing import Dict, Any, List, Optional
+from utils2 import JobMatchAnalyzer
+
 # Initialize FastAPI application
 app = FastAPI(
-    title="Resume Parser",
-    description="Resume parsing application using LM Studio and SpaCy",
-    version="2.0.0"
+    title="Resume Parser & CV-Job Matching API",
+    description="Resume parsing application using LM Studio and SpaCy & API for analyzing match between CV and job postings",
+    version="1.0.0"
 )
 
 # Configure CORS
@@ -29,6 +33,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Resume Parser
 
 # Configure application paths
 UPLOAD_FOLDER = Path("uploads")
@@ -57,14 +63,14 @@ app.add_middleware(
 )
 
 # LM Studio configuration
-LM_STUDIO_URL = "http://localhost:7860/v1/chat/completions"
+LM_STUDIO_URL = "http://192.168.1.100:7860/v1/chat/completions"
 lm_studio_client = LMStudioClient(LM_STUDIO_URL)
 
 def check_lm_studio_status():
     """Check if LM Studio server is running and responsive"""
     try:
         # Simple health check request
-        response = requests.get("http://localhost:7860/v1/models")
+        response = requests.get("http://192.168.1.100:7860/v1/models")
         return response.status_code == 200
     except requests.RequestException:
         return False
@@ -295,6 +301,125 @@ async def internal_error_exception_handler(request: Request, exc: HTTPException)
             "detail": str(exc.detail) if hasattr(exc, 'detail') else None
         }
     )
+
+# CV-Job Matching API
+
+# Global storage for CV and Job data
+stored_data = {
+    "cv_data": None,
+    "job_data": None
+}
+
+# Initialize analyzer
+analyzer = JobMatchAnalyzer()
+
+class CVData(BaseModel):
+    Data: List[Dict[str, Any]]
+    success: bool = True
+
+class JobData(BaseModel):
+    id: int
+    jobTitle: str
+    jobDescription: str
+    experienceRequired: int
+    qualificationRequired: str
+    skillSets: List[str]
+    companyName: str
+    jobType: Dict[str, Any]
+
+@app.get("/")
+async def root():
+    return {
+        "message": "CV-Job Matching API",
+        "status": "active",
+        "device": str(analyzer.device)
+    }
+
+@app.post("/upload_cv/")
+async def upload_cv(cv_data: CVData):
+    """Upload CV data"""
+    try:
+        stored_data["cv_data"] = cv_data.dict()
+        return {
+            "success": True,
+            "message": "CV data stored successfully",
+            "candidate_name": cv_data.Data[0]['personal']['name'][0] if cv_data.Data else None
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": str(e),
+                "error_type": type(e).__name__
+            }
+        )
+
+@app.post("/upload_job/")
+async def upload_job(job_data: JobData):
+    """Upload Job Post data"""
+    try:
+        stored_data["job_data"] = job_data.dict()
+        return {
+            "success": True,
+            "message": "Job data stored successfully",
+            "job_title": job_data.jobTitle
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": str(e),
+                "error_type": type(e).__name__
+            }
+        )
+
+@app.post("/analyze_match/")
+async def analyze_match():
+    """Analyze match using stored CV and Job data"""
+    try:
+        if not stored_data["cv_data"] or not stored_data["job_data"]:
+            raise HTTPException(
+                status_code=400,
+                detail="Both CV and Job data must be uploaded first"
+            )
+            
+        result = analyzer.analyze_match(
+            cv_data=stored_data["cv_data"],
+            job_data=stored_data["job_data"]
+        )
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": str(e),
+                "error_type": type(e).__name__
+            }
+        )
+
+@app.get("/health")
+async def health_check():
+    return {
+        "status": "healthy",
+        "model": "loaded" if hasattr(analyzer, 'model') else "not_loaded",
+        "device": str(analyzer.device),
+        "stored_data": {
+            "has_cv": stored_data["cv_data"] is not None,
+            "has_job": stored_data["job_data"] is not None
+        }
+    }
+
+@app.delete("/clear_data/")
+async def clear_data():
+    """Clear stored CV and Job data"""
+    stored_data["cv_data"] = None
+    stored_data["job_data"] = None
+    return {
+        "success": True,
+        "message": "All stored data cleared"
+    }
 
 if __name__ == "__main__":
     uvicorn.run(
