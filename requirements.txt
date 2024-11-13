@@ -90,3 +90,7 @@ gunicorn
 python-multipart
 uvicorn
 fastapi
+torch
+sentence-transformers
+beautifulsoup4
+typing-extensions
