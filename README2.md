@@ -2,6 +2,9 @@ _\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\_
 _\\----------- **Resume Parser** ----------\\_
 _\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\_
 
+cd C:\My Station\Final\ResumeExtractor-FinalCapstone\ResumeExtractor3
+conda activate resume_extractor_3
+
 # Overview:
 This project is a comprehensive Resume Parsing tool built using Python,
 integrating the Mistral-Nemo-Instruct-2407 model for primary parsing.
