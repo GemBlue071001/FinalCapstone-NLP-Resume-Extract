@@ -18,6 +18,8 @@ from pydantic import BaseModel
 from typing import Dict, Any, List, Optional
 from utils2 import JobMatchAnalyzer
 
+from utils3 import VectorService, JobPost, SearchQuery
+
 # Initialize FastAPI application
 app = FastAPI(
     title="Resume Parser & CV-Job Matching API",
@@ -63,14 +65,14 @@ app.add_middleware(
 )
 
 # LM Studio configuration
-LM_STUDIO_URL = "http://192.168.1.100:7860/v1/chat/completions"
+LM_STUDIO_URL = "http://192.168.2.38:7860/v1/chat/completions"
 lm_studio_client = LMStudioClient(LM_STUDIO_URL)
 
 def check_lm_studio_status():
     """Check if LM Studio server is running and responsive"""
     try:
         # Simple health check request
-        response = requests.get("http://192.168.1.100:7860/v1/models")
+        response = requests.get("http://192.168.2.38:7860/v1/models")
         return response.status_code == 200
     except requests.RequestException:
         return False
@@ -420,6 +422,57 @@ async def clear_data():
         "success": True,
         "message": "All stored data cleared"
     }
+
+# Initialize vector service
+vector_service = VectorService()
+
+@app.post("/jobs/embed", 
+         summary="Embed a job post",
+         response_description="Job ID and success message")
+async def embed_job(job: JobPost):
+    """
+    Embed a job post and save to database.
+    
+    - Takes a complete job post as input
+    - Creates vector embedding using sentence transformer
+    - Saves the embedding to PostgreSQL database
+    """
+    try:
+        job_id = await vector_service.embed_job(job)
+        if job_id:
+            return {
+                "message": "Job embedding updated successfully",
+                "job_id": job_id
+            }
+        else:
+            raise HTTPException(status_code=404, detail="Job not found")
+            
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error updating job embedding: {str(e)}"
+        )
+
+@app.post("/jobs/search",
+         summary="Search for jobs",
+         response_description="List of matching job IDs")
+async def search_jobs(search_query: SearchQuery):
+    """
+    Search for jobs using semantic similarity.
+    
+    - Takes a natural language query
+    - Returns IDs of most similar jobs
+    - Example query: "jobs for data analysts in NY with remote options"
+    """
+    try:
+        ids = await vector_service.search_jobs(search_query.query)
+        return {"ids": ids}
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error searching jobs: {str(e)}"
+        )
 
 if __name__ == "__main__":
     uvicorn.run(
